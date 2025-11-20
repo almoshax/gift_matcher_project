@@ -1,8 +1,76 @@
-<!doctype html><html lang="ar"><head><meta charset="utf-8">
-<title>Matcher</title></head><body>
-<h2>رفع PDF</h2>
-<form method="POST" enctype="multipart/form-data">
-<input type="file" name="pdf" accept="application/pdf">
-<button type="submit">تشغيل المطابقة</button>
-</form>
-</body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <title>أداة مطابقة الهدايا</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container py-5">
+
+    <h1 class="text-center mb-4">أداة مطابقة الهدايا</h1>
+
+    <div class="card shadow-sm p-4">
+
+        <form method="POST" enctype="multipart/form-data" class="mb-4">
+            <label class="form-label">اختر ملف PDF:</label>
+            <input type="file" name="pdf" accept="application/pdf" class="form-control mb-3" required>
+
+            <button class="btn btn-primary w-100" type="submit">
+                تشغيل المطابقة
+            </button>
+        </form>
+
+        {% if rows %}
+        <div class="alert alert-success text-center">
+            ✔ تمت عملية المطابقة بنجاح
+        </div>
+
+        <h4 class="mt-4 mb-3">نتيجة المطابقة:</h4>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th>كود الصنف</th>
+                        <th>اسم الصنف</th>
+                        <th>الكمية</th>
+                        <th>عدد القطع/كرتونة</th>
+                        <th>عدد الكراتين</th>
+                        <th>الزيادة</th>
+                        <th>عدد الهدايا</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td>{{ row.code }}</td>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.qty }}</td>
+                        <td>{{ row.pcs }}</td>
+                        <td>{{ row.cartons }}</td>
+                        <td>{{ row.extra }}</td>
+                        <td>{{ row.gifts }}</td>
+                        <td>{{ row.status }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <a href="/download" class="btn btn-success w-100 mt-3">
+            تحميل ملف Excel
+        </a>
+        {% endif %}
+
+    </div>
+</div>
+
+</body>
+</html>
