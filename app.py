@@ -8,16 +8,21 @@ import json
 app = Flask(__name__)
 
 # -----------------------
-# Load reference database
+# Load reference.json
 # -----------------------
 with open("reference.json", "r", encoding="utf-8") as f:
     REF = json.load(f)
 
 ref_dict = {r["code"].strip(): r for r in REF if r.get("code")}
 
+# -----------------------
+# GLOBAL VARIABLE to store last results
+# -----------------------
+LAST_RESULTS = None
+
 
 # -----------------------
-# Extract qty even if code is in one line and qty is next line
+# Extract qty even if code on one line and qty on next
 # -----------------------
 def extract_all_codes_and_quantities(text):
     lines = text.split("\n")
@@ -26,23 +31,23 @@ def extract_all_codes_and_quantities(text):
     for i, line in enumerate(lines):
         line = line.strip()
 
-        # if line is exactly a code from reference.json
+        # exactly matches code
         if line in ref_dict:
 
-            # look in the SAME line first
             qty = None
+
+            # try same line
             m = re.search(r"\b(\d{1,7})\b", line)
             if m:
                 qty = int(m.group(1))
 
-            # if not found → look in the NEXT line
+            # try next line
             if qty is None and i + 1 < len(lines):
                 next_line = lines[i + 1]
                 m2 = re.search(r"\b(\d{1,7})\b", next_line)
                 if m2:
                     qty = int(m2.group(1))
 
-            # If quantity found, add/update
             if qty is not None:
                 if line not in results:
                     results[line] = 0
@@ -52,28 +57,27 @@ def extract_all_codes_and_quantities(text):
 
 
 # -----------------------
-# MAIN ROUTE
+# MAIN PAGE
 # -----------------------
 @app.route("/", methods=["GET", "POST"])
 def index():
+    global LAST_RESULTS
+
     if request.method == "POST":
 
-        if "pdf" not in request.files:
+        file = request.files.get("pdf")
+        if not file:
             return redirect(url_for("index"))
 
-        file = request.files["pdf"]
         pdf_bytes = file.read()
 
-        # Read PDF text
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         text = ""
         for page in doc:
             text += page.get_text()
 
-        # Extract
         raw_results = extract_all_codes_and_quantities(text)
 
-        # Build table rows
         rows = []
         for code, qty in raw_results.items():
 
@@ -97,16 +101,11 @@ def index():
                 "status": "مستحق"
             })
 
-        # Sort by code
         rows = sorted(rows, key=lambda x: x["code"])
 
-        # Save Excel into memory buffer
-        df = pd.DataFrame(rows)
-        excel_bytes = io.BytesIO()
-        df.to_excel(excel_bytes, index=False)
-        excel_bytes.seek(0)
+        # Save results for Excel
+        LAST_RESULTS = rows
 
-        # Render table in HTML
         return render_template("index.html", rows=rows)
 
     return render_template("index.html", rows=None)
@@ -117,10 +116,22 @@ def index():
 # -----------------------
 @app.route("/download")
 def download_excel():
-    # regenerate same Excel from last request
-    # safer implementation: regenerate from reference + last cached pdf
-    # but here we simply rebuild from request values passed via GET
-    return "Not implemented yet"  # (we will fill this after table integration)
+    global LAST_RESULTS
+
+    if not LAST_RESULTS:
+        return "لا توجد نتائج مطابقة بعد."
+
+    df = pd.DataFrame(LAST_RESULTS)
+
+    output = io.BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+
+    return send_file(
+        output,
+        download_name="نتائج_المطابقة.xlsx",
+        as_attachment=True
+    )
 
 
 if __name__ == "__main__":
